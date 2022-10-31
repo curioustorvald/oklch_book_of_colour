@@ -1,0 +1,12 @@
+<p>This webapp presents a "Colour Book" view of the OKLCh colour space, inspired by the <em>Munsell Book of Color</em>.</p>
+
+<p>Before you marvel at the shape of the gamut of the visible colour, please be aware that:</p>
+
+<ul>
+<li>Your monitor is simply incapable of showing the every colours on the diagram perfectly; the purpose of the webapp is to give you an overview on the quality of the human colour perception. (so don’t bother try to pick a colour using the colour picker; you <em>will</em> get a wrong colour)</li>
+<li>Because of the imperfect method of calculating the edges of the visible gamut, the diagram may have distortions; the actual gamut is expected to be smooth.</li>
+<li>Highly saturated colours may appear brighter than their suggested lightness; such phenomenon is known as the <em>Helmholtz–Kohlrausch effect</em>, and the OKLab colour space regrettably does not consider it.</li>
+<li>For the RGB Models with an asterisk, they are currently not a part of the web standard for the colour management, and thus you need to disable the colour management of the web browser to get the colours displayed properly.</li>
+</ul>
+
+<p>The chroma-limit dataset is generated using the Python library called <em>colour-science</em>. The Python script to generate the dataset is available at <a href="https://gist.github.com/curioustorvald/4c04ab9def2cf8d9fdec2890f5ee3c15">this link to the Github Gist</a>.</p>

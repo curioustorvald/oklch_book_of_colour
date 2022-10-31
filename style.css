@@ -1,0 +1,146 @@
+* {
+    --cpicker-size: 540px;
+    --toprow-height: 36px;
+    --grid-gap: 10px;
+}
+
+html {
+    background: #707070;
+    max-width: calc(2 * var(--cpicker-size));
+    margin-left: auto;
+    margin-right: auto;
+    color: #000;
+}
+
+bookpanel {
+    display: grid;
+    grid-template-rows: auto auto;
+    grid-row-gap: 1em;
+}
+
+bookpanel > div {
+    margin-left: auto;
+    margin-right: auto
+}
+
+#slider_hue {
+    width: calc(2 * var(--cpicker-size));
+    appearance: none;
+    background: url("chromabar.png");
+    background-size: cover;
+    margin: 0;
+    height: 32px;
+}
+
+#slider_hue::-moz-range-thumb {
+    appearance: none !important;
+    width: 6px;
+    height: 32px;
+    background: none;
+    border: 2px solid white;
+    border-radius: 6px;
+    box-sizing: content-box;
+}
+
+#slider_hue::-webkit-slider-thumb {
+    appearance: none !important;
+    width: 6px;
+    height: 32px;
+    background: none;
+    border: 2px solid white;
+    border-radius: 6px;
+    box-sizing: content-box;
+}
+
+colourbook {
+    display: grid;
+    grid-template-columns: auto auto;
+}
+
+#gradviewL {
+    transform: scale(-1, -1);
+}
+
+#gradviewR {
+    transform: scale(1, -1);
+}
+
+#lightness_cursor, #chroma_cursor {
+    padding: 0 0.3em;
+}
+
+.book_top_row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: var(--toprow-height);
+}
+
+#crosshaircontainercontainer {
+    grid-column: 1 / span 2;
+}
+
+#crosshaircontainer {
+    position: absolute;
+}
+
+#crosshair {
+    position: relative;
+    z-index: 100;
+    top: 0;
+}
+
+.hue_num {
+/*     width: var(--cpicker-size); */
+    padding: 0;
+}
+
+.hue_num > span {
+    padding: 50px;
+}
+
+.hue_num > span:after {
+    padding-left: 0.1ex;
+    content: "°";
+}
+
+
+apppanel {
+    display: block;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+docpanel, pagetitle {
+    display: block;
+}
+
+pagetitle {
+    padding: 1em 2em;
+    font-weight: 700;
+    font-size: 2rem;
+    text-align: center;
+}
+
+docpanel {
+    padding: 1em 2em;
+    margin: 4em 2em;
+    background: #eee;
+    border: 1px solid #334;
+    border-radius: 0.5em;
+    box-shadow: 0px 6px 24px rgba(0,0,0,0.5);
+}
+
+footer {
+    padding: 0 1em 0 1em;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.gradwrapperwrapper {
+    background: #808080;
+}
+
+#outcol_swatch {
+/*     border: 3px solid #eeeeee; */
+}

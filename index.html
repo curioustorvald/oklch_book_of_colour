@@ -1,0 +1,274 @@
+<meta charset = "UTF-8" />
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="culldata.js"></script>
+    <script src="script.js"></script>
+</head>
+<title>OKLCh Book of Visible Colours</title>
+<body onload="onpageload()">
+    <pagetitle>
+        <span>OKLCh Book of Visible Colours</span>
+    </pagetitle>
+    <apppanel>
+    <bookpanel>
+        <!-- #1 --><colourbook>
+            <!-- left top --><div class="book_top_row">
+                <div class="hue_num"><span id="hue_left"></span></div>
+                <div style="text-align: right"><span id="chroma_cursor"></span></div>
+            </div>
+            <!-- right top --><div class="book_top_row">
+                <div><span id="lightness_cursor"></span></div>
+                <div class="hue_num" style="text-align: right"><span id="hue_right"></span></div>
+            </div>
+            <!-- crosshair svg --><div id="crosshaircontainercontainer"><div id="crosshaircontainer">
+                <svg id="crosshair" width="1080" height="540">
+                    <line id="crosshairvert" x1="200" y1="0" x2="200" y2="9999" stroke="white" />
+                    <line id="crosshairhorz" x1="0" y1="400" x2="9999" y2="400" stroke="white" />
+                </svg>
+            </div></div>
+            <!-- left bottom --><div class="gradwrapperwrapper"><div class="gradwrapper">
+                <canvas id="gradviewL" width="540" height="540"></canvas>
+            </div></div>
+            <!-- right bottom --><div class="gradwrapperwrapper"><div class="gradwrapper">
+                <canvas id="gradviewR" width="540" height="540"></canvas>
+            </div></div>
+        </colourbook>
+
+        <!-- huesel --><div>
+            <label for="slider_hue">Hue</label>
+        </div>
+        <!-- huesel label --><div>
+            <input type="range" id="slider_hue" name="slider_hue" min="0" max="360" step="1" value="0" />
+        </div>
+        <!-- rgbsel --><div>
+            <label for="select_colourmodel">RGB Model</label>
+        </div>
+        <!-- rgbsel label --><div>
+            <select name="select_colourmodel" id="select_colourmodel">
+                <option value="sRGB">sRGB</option>
+                <option value="AppleP3">Display P3</option>
+                <option value="AdobeRGB">AdobeRGB*</option>
+                <option value="Rec2020">Rec. 2020*</option>
+            </select>
+        </div>
+    </bookpanel>
+    </apppanel>
+    <docpanel id="docpanel"></docpanel>
+    <footer>
+        <p>Copyright © 2022 CuriousTorvald</p>
+        <p><a href="https://github.com/curioustorvald/oklch_book_of_colour">Fork me on Github!</a></p>
+    </footer></body>
+<script>
+"use strict";
+
+let hue = 0
+let rgbModel = "sRGB"
+
+const GRAD_SIZE = 540.0;
+
+const setOutputSwatch = (style, outOfGamut) => {
+    document.getElementById("outcol_swatch").style["background-color"] = style
+}
+const setOutputCcode = (text, outOfGamut) => {
+    document.getElementById("outcol_text").innerText = text
+    document.getElementById("outcol_text").style["color"] = (outOfGamut) ? "#ff030b" : "unset"
+}
+
+class RGBModel {
+    constructor(fromFun, toFun) {
+        this.fromXYZ = fromFun // params: x,y,z (0-1); return: [r,g,b]  (0-1)
+        this.toXYZ = toFun // params: r,g,b (0-1); return: [x,y,z]  (0-1)
+    }
+}
+
+const rgbModels = Object.freeze({
+    sRGB: new RGBModel(
+        (x, y, z) => {
+            if ([x,y,z].some(it=>it===undefined)) throw Error()
+            return [ // http://fujiwaratko.sakura.ne.jp/infosci/colorspace/colorspace2_e.html
+                 3.240970*x - 1.537383*y - 0.498611*z,
+                -0.969244*x + 1.875968*y + 0.041555*z,
+                 0.055630*x - 0.203977*y + 1.056972*z
+            ].map(it=>(it <= 0.0031308) ? (12.92 * it) : (1.055 * Math.pow(it, 1.0 / 2.4) - 0.055))
+        },
+        (r, g, b) => {
+            if ([r,g,b].some(it=>it===undefined)) throw Error()
+            let [lr,lg,lb] = [r,g,b].map(it=>(it <= 0.04045) ? it / 12.92 : Math.pow((it + 0.055) / 1.055, 2.4))
+            // resultant XYZ will have D65 white with this matrix
+            return [ // http://fujiwaratko.sakura.ne.jp/infosci/colorspace/colorspace2_e.html
+                0.412391*lr + 0.357584*lg + 0.180481*lb,
+                0.212639*lr + 0.715169*lg + 0.072192*lb,
+                0.019331*lr + 0.119195*lg + 0.950532*lb
+            ]
+        }
+    ),
+    AppleP3: new RGBModel(
+        (x, y, z) => {
+            if ([x,y,z].some(it=>it===undefined)) throw Error()
+            return [ // http://fujiwaratko.sakura.ne.jp/infosci/colorspace/colorspace2_e.html
+                 2.493497*x - 0.931384*y - 0.402711*z,
+                -0.829489*x + 1.762664*y + 0.023625*z,
+                 0.035846*x - 0.076172*y + 0.956885*z
+            ].map(it=>(it <= 0.0031308) ? (12.92 * it) : (1.055 * Math.pow(it, 1.0 / 2.4) - 0.055))
+        },
+        (r, g, b) => {
+            if ([r,g,b].some(it=>it===undefined)) throw Error()
+            let [lr,lg,lb] = [r,g,b].map(it=>(it <= 0.04045) ? it / 12.92 : Math.pow((it + 0.055) / 1.055, 2.4))
+            // resultant XYZ will have D65 white with this matrix
+            return [ // http://fujiwaratko.sakura.ne.jp/infosci/colorspace/colorspace2_e.html
+                0.486571*lr + 0.265668*lg + 0.198217*lb,
+                0.228975*lr + 0.691739*lg + 0.079287*lb,
+                0.000000*lr + 0.045113*lg + 1.043944*lb
+            ]
+        }
+    ),
+    AdobeRGB: new RGBModel(
+        (x, y, z) => {
+            if ([x,y,z].some(it=>it===undefined)) throw Error()
+            return [ // http://fujiwaratko.sakura.ne.jp/infosci/colorspace/colorspace2_e.html
+                 2.041588*x - 0.565007*y - 0.344731*z,
+                -0.969244*x + 1.875968*y + 0.041555*z,
+                 0.013444*x - 0.118362*y + 1.015175*z
+            ].map(it=>(it <= 0.00174) ? (32.0 * it) : (Math.pow(it, 1.0 / 2.2)))
+        },
+        (r, g, b) => {
+            if ([r,g,b].some(it=>it===undefined)) throw Error()
+            let [lr,lg,lb] = [r,g,b].map(it=>(it <= 0.0556) ? it / 32.0 : Math.pow(it, 2.2))
+            // resultant XYZ will have D65 white with this matrix
+            return [ // http://fujiwaratko.sakura.ne.jp/infosci/colorspace/colorspace2_e.html
+                0.576669*lr + 0.185558*lg + 0.188229*lb,
+                0.297345*lr + 0.627364*lg + 0.075291*lb,
+                0.027031*lr + 0.070689*lg + 0.991338*lb
+            ]
+        }
+    ),
+    Rec2020: new RGBModel(
+        (x, y, z) => {
+            if ([x,y,z].some(it=>it===undefined)) throw Error()
+            return [ // http://color.support/colorspacecalculator.html
+                 1.716651*x - 0.355671*y - 0.253366*z,
+                -0.666684*x + 1.616481*y + 0.015769*z,
+                 0.017640*x - 0.042771*y + 0.942103*z
+            ].map(it=>(it < 0.018) ? (it * 4.5) : (1.099 * Math.pow(it, 0.45) - 0.099))
+        },
+        (r, g, b) => {
+            if ([r,g,b].some(it=>it===undefined)) throw Error()
+            let [lr,lg,lb] = [r,g,b].map(it=>(it < 0.081) ? it / 4.5 : Math.pow((it + 0.099) / 1.099, 1.0 / 0.45))
+            // resultant XYZ will have D65 white with this matrix
+            return [ // http://color.support/colorspacecalculator.html
+                0.636958*lr + 0.144617*lg + 0.168881*lb,
+                0.262700*lr + 0.677998*lg + 0.059302*lb,
+                0.000000*lr + 0.028073*lg + 1.060985*lb
+            ]
+        }
+    )
+})
+
+function rgbStrToTriad(s) {
+    let r = Number("0x"+s.substring(1,3)) / 255.0
+    let g = Number("0x"+s.substring(3,5)) / 255.0
+    let b = Number("0x"+s.substring(5,7)) / 255.0
+    return [r,g,b]
+}
+
+Number.prototype.coerceIn = function(low, high) {
+    return (this < low) ? low : (this > high) ? high : this
+}
+
+function rgbTriadToStr(rgb) {
+    let [rs, gs, bs] = rgb.map(it => (Math.round(it.coerceIn(0.0, 1.0)*255.0)|0).toString(16).padStart(2,'0') )
+    return `#${rs}${gs}${bs}`
+}
+
+function onpageload() {
+    hue = document.getElementById("slider_hue").value
+    rgbModel = document.getElementById("select_colourmodel").value
+
+    updateChrome(hue)
+    updatePicker()
+    updateGradview(hue)
+}
+
+function loadArticle(filePath, callback) {
+    let xobj = new XMLHttpRequest()
+        xobj.overrideMimeType("application/html")
+    xobj.open('GET', filePath, true)
+    xobj.onreadystatechange = function () {
+          if (xobj.readyState == 4) {
+            // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
+            callback((xobj.status == "200") ? xobj.responseText : null)
+          }
+    }
+    xobj.send(null)
+}
+
+function updateChrome(hue) {
+    document.getElementById("hue_right").innerText = 'Hue: '+hue
+    document.getElementById("hue_left").innerText = 'Hue: '+((hue+180)%360)
+}
+
+document.getElementById("slider_hue").oninput = (event) => {
+    hue = event.target.value*1
+    updateChrome(hue)
+    updatePicker(); updateGradview(hue)
+}
+document.getElementById("select_colourmodel").oninput = (event) => {
+    rgbModel = event.target.value
+    updatePicker(); updateGradview(hue)
+}
+
+loadArticle("doc.html", (html) => {
+    document.getElementById("docpanel").innerHTML = html
+})
+
+document.getElementById("gradviewL").getContext("2d").fillRect(0,0,9999,9999)
+document.getElementById("gradviewR").getContext("2d").fillRect(0,0,9999,9999)
+
+let gradRect = document.getElementById("crosshair").getBoundingClientRect()
+
+function setCrosshairPos(x, y) {
+    document.getElementById("crosshairvert").setAttribute("x1",x)
+    document.getElementById("crosshairvert").setAttribute("x2",x)
+    document.getElementById("crosshairhorz").setAttribute("y1",y)
+    document.getElementById("crosshairhorz").setAttribute("y2",y)
+
+    if (x >= 0 && y >= 0) {
+        let ch = (x > 540) ? ((x - 540) / 540 * chromaMax) : ((540 - x) / 540 * chromaMax)
+        let li = 1 - (y / 540)
+
+        document.getElementById("chroma_cursor").innerText = "Chroma: " + ch.toFixed(3)
+        document.getElementById("lightness_cursor").innerText = "Lightness: " + li.toFixed(3)
+    }
+    else {
+        document.getElementById("chroma_cursor").innerText = ""
+        document.getElementById("lightness_cursor").innerText = ""
+    }
+}
+
+const updater = (event) => {
+    let newRect = event.target.getBoundingClientRect()
+    if (newRect.width == 1080 && newRect.height == 540) gradRect = newRect // wtf html?
+    const [mx, my] = [event.clientX - gradRect.x, event.clientY - gradRect.y]
+    let cx = mx.coerceIn(0,1080-1)
+    let cy = my.coerceIn(0,540-1)
+    setCrosshairPos(cx, cy)
+}
+
+document.onpointermove = (event)=>{
+    const scroll = window.pageYOffset
+    const [mx, my] = [event.clientX, event.clientY + scroll]
+
+    if (gradRect.x <= mx && mx < gradRect.x + gradRect.width &&
+        gradRect.y <= my && my < gradRect.y + gradRect.height) {
+        setCrosshairPos(mx - gradRect.x, my - gradRect.y)
+    }
+    else {
+        setCrosshairPos(-999999, -999999)
+    }
+}
+// document.getElementById("crosshair").onpointermove = updater
+
+</script>
+</html>
